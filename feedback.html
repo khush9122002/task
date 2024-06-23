@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feedback Form</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        form {
+            margin-bottom: 20px;
+        }
+        input, button {
+            margin: 5px 0;
+        }
+        #feedback-list {
+            margin-top: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        table, th, td {
+            border: 1px solid black;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <h1>Feedback Form</h1>
+    <form id="feedbackForm">
+        <label for="name">Name:</label>
+        <input type="text" id="name" name="namek" required><br><br>
+        <label for="email">Email:</label>
+        <input type="email" id="email" name="emailk" required><br><br>
+        <label for="subject">Subject:</label>
+        <input type="text" id="subject" name="subk" required><br><br>
+        <label for="message">Message:</label>
+        <textarea id="message" name="messk" required></textarea><br><br>
+        <button type="submit">Submit</button>
+    </form>
+
+    <form id="update-form">
+        <h2>Update Feedback</h2>
+        ID: <input type="number" id="update-id"  name="id"><br>
+        Name: <input type="text" id="update-name" name="Name"><br>
+        Email: <input type="email" id="update-email" name="email"><br>
+        <button type="submit">Update Feedback</button>
+    </form>
+
+    <form id="delete-form">
+    
+    </form>
+
+    <button id="get-feedbacks">Get All Feedbacks</button>
+    <div id="feedback-list">
+        <table id="feedback-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Subject</th>
+                    <th>Message</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Table data will be populated here -->
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        let feedbackData = [];
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('feedbackForm');
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+
+                const formData = {
+                    namek: document.getElementById('name').value,
+                    emailk: document.getElementById('email').value,
+                    subk: document.getElementById('subject').value,
+                    messk: document.getElementById('message').value,
+                };
+                console.log(formData);
+
+                fetch('http://127.0.0.1:5000/insert', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === "success") {
+                        alert("Feedback submitted successfully");
+                        getFeedbacks();  // Refresh the feedback list
+                    } else {
+                        alert("Error submitting feedback");
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+            });
+
+            document.getElementById('update-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                let id = document.getElementById('update-id').value;
+                let name = document.getElementById('update-name').value;
+                let email = document.getElementById('update-email').value;
+
+                fetch(`http://127.0.0.1:5000/update_user/${id}`, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        namek: name,
+                        emailk: email
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert('Error: ' + data.error);
+                    } else {
+                        alert('Feedback updated successfully!');
+                        getFeedbacks();  // Refresh the feedback list
+                    }
+                })
+                .catch(error => {
+                    alert('Error updating feedback');
+                    console.error('Error:', error);
+                });
+            });
+
+            document.getElementById('delete-form').addEventListener('submit', function(event) {
+                event.preventDefault();
+                
+                let id = document.getElementById('delete-id').value;
+                console.log(id);
+
+                fetch(`http://127.0.0.1:5000/delete/${id}`, {
+                    method: 'GET',  // Change this to 'POST' if your backend supports POST for delete
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok ' + response.statusText);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log(data);
+                    alert('Feedback deleted successfully');
+                    getFeedbacks();  // Refresh the feedback list
+                })
+                .catch(error => {
+                    console.error('There was a problem with the fetch operation:', error);
+                    alert('Failed to delete feedback');
+                });
+            });
+
+            document.getElementById('get-feedbacks').addEventListener('click', function() {
+                getFeedbacks();
+            });
+
+            function getFeedbacks() {
+                fetch('http://127.0.0.1:5000/feedbacks')
+                .then(response => response.json())
+                .then(data => {
+                    feedbackData = data.data; // Store feedback data globally
+                    const feedbackTableBody = document.getElementById('feedback-table').getElementsByTagName('tbody')[0];
+                    feedbackTableBody.innerHTML = '';  // Clear any existing content
+                    console.log(data);
+                    if (Array.isArray(feedbackData)) {
+                        feedbackData.forEach(feedback => {
+                            const row = feedbackTableBody.insertRow();
+                            row.innerHTML = `
+                                <td>${feedback.id}</td>
+                                <td>${feedback.Name}</td>
+                                <td>${feedback.Email}</td>
+                                <td>${feedback.Subject}</td>
+                                <td>${feedback.Message}</td>
+                                <td>
+                                    <button onclick="editFeedback(${feedback.id})">Edit</button>
+                                    <button onclick="deleteFeedback(${feedback.id})">Delete</button>
+                                </td>
+                            `;
+                        });
+                    } else {
+                        console.error('Data is not an array:', data);
+                    }
+                })
+                .catch(error => {
+                    alert('Error fetching feedbacks');
+                    console.error('Error:', error);
+                });
+            }
+
+            window.editFeedback = function(id) {
+                const feedback = feedbackData.find(feedback => feedback.id === id);
+                if (feedback) {
+                    document.getElementById('update-id').value = feedback.id;
+                    document.getElementById('update-name').value = feedback.Name;
+                    document.getElementById('update-email').value = feedback.Email;
+                    // document.getElementById('update-subject').value = feedback.Subject;
+                    // document.getElementById('update-message').value = feedback.Message;
+                }
+            };
+
+            window.deleteFeedback = function(id) {
+                fetch(`http://127.0.0.1:5000/delete/${id}`, {
+                    method: 'POST',  // Change this to 'POST' if your backend supports POST for delete
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok ' + response.statusText);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log(data);
+                    alert('Feedback deleted successfully');
+                    getFeedbacks();  // Refresh the feedback list
+                })
+                .catch(error => {
+                    console.error('There was a problem with the fetch operation:', error);
+                    alert('Failed to delete feedback');
+                });
+            };
+
+            // Fetch feedbacks initially when the page loads
+            getFeedbacks();
+        });
+    </script>
+</body>
+</html>
